@@ -97,6 +97,7 @@ public class Product
 	
 	// private class for the updateButton
 	// When the update is successfully processed, the frame received will be closed automatically
+	// CASE F
 	private class updateButton implements ActionListener
 	{
 		private JTextField value;
@@ -160,7 +161,6 @@ public class Product
 		frame.pack();
 		frame.setVisible(true);
 		frame.setLocationRelativeTo(null);
-		
 		return true;
 	}
 }

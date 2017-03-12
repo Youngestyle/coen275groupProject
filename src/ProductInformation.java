@@ -21,7 +21,17 @@
  * boolean addProduct(Product newProduct)
  * boolean removeProduct(int i)
  * void display()
+ * void paint(JFrame frame)
  * void createProduct()
+ * Boolean organize()
+ * ArrayList<Product> getExpired()
+ * ArrayList<Product> getNotExpired()
+ * ArrayList<Product> getSoonExpired()
+ * ArrayList<Product> getLowStock()
+ * ArrayList<Product> getAll()
+ * Product getProductAt(int i)
+ * boolean addProducts(ProductInformation newProducts)
+ * int getNumberOfProducts()
  */
 
 import java.awt.BorderLayout;
@@ -45,6 +55,8 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.border.Border;
+
+import org.joda.time.Days;
 import org.joda.time.LocalDate;
 
 public class ProductInformation {
@@ -55,31 +67,32 @@ public class ProductInformation {
 	private boolean _expirable;
 	
 	//List of products and expirable products
-	private ArrayList<Product> products;
+	private ArrayList<Product> _products;
 	
 	// constructor
 	public ProductInformation()
-	{
+	{	
 		_name= "";
 		_category= "";
 		_expirable = false;
-		products = new ArrayList<Product>();
+		_products = new ArrayList<Product>();
 	}
 	
 	// constructor
 	public ProductInformation(String newName, String newCategory, boolean newExpirable)
 	{
+		
 		_name= newName;
 		_category= newCategory;
 		_expirable = newExpirable;
-		products = new ArrayList<Product>();
+		_products = new ArrayList<Product>();
 		
 		// If this product is not expirable, it only need one product in the ArrayList
 		// This is the fault-safe for segmentation fault, in case there is not product in the array list
 		// It should be covered when add new products
 		if(!_expirable)
 		{
-			products.add(new Product(0));
+			_products.add(new Product(0));
 		}
 	};
 
@@ -126,9 +139,9 @@ public class ProductInformation {
 	public int getTotalQuantity()
 	{
 		int total = 0;
-		for(int i = 0; i< products.size(); i++)
+		for(int i = 0; i< _products.size(); i++)
 		{
-			total += products.get(i).getQuantity();
+			total += _products.get(i).getQuantity();
 		}
 		return total;
 	};
@@ -145,11 +158,11 @@ public class ProductInformation {
 			return getTotalQuantity();
 		}
 		
-		for(int i = 0; i< products.size(); i++)
+		for(int i = 0; i< _products.size(); i++)
 		{
-			if(((ExpirableProduct)products.get(i)).getExpirationDate().isAfter(new LocalDate()))
+			if(((ExpirableProduct)_products.get(i)).getExpirationDate().isAfter(new LocalDate()))
 			{
-				total += products.get(i).getQuantity();
+				total += _products.get(i).getQuantity();
 			}
 		}
 		return total;
@@ -158,25 +171,28 @@ public class ProductInformation {
 	// add new product to the list of products
 	public boolean addProduct(Product newProduct)
 	{
-		products.add(newProduct);
+		_products.add(newProduct);
 		return true;
 	}
 	
 	// remove the product at index i
 	public boolean removeProduct(int i)
 	{
-		products.remove(i);
+		_products.remove(i);
 		return true;
 	}
 	
 	// private class for the edit button
 	// this call the update function in the Product class or the ExpirableProduct class
+	// CASE G
 	private class editButton implements ActionListener
 	{
-		private int _index;
-		public editButton(int index)
+		private int index;
+		private JFrame frame;
+		public editButton(int newIndex, JFrame newFrame)
 		{
-			this._index = index;
+			index = index;
+			frame = newFrame;
 		}
 		
 		@Override
@@ -184,12 +200,34 @@ public class ProductInformation {
 		{
 			if(_expirable)
 			{
-				((ExpirableProduct)products.get(_index)).update();
+				((ExpirableProduct)_products.get(index)).update();
 			}
 			else
 			{
-				products.get(_index).update();
+				_products.get(index).update();
 			}
+		}
+		
+	}
+	
+	private class refresh implements WindowFocusListener
+	{
+		private JFrame frame;
+		public refresh(JFrame newFrame)
+		{
+			frame = newFrame;
+		}
+		@Override
+		public void windowGainedFocus(WindowEvent e) {
+			// TODO Auto-generated method stub
+			organize();
+			paint(frame);
+		}
+
+		@Override
+		public void windowLostFocus(WindowEvent e) {
+			// TODO Auto-generated method stub
+			
 		}
 		
 	}
@@ -198,29 +236,13 @@ public class ProductInformation {
 	public void display()
 	{
 		// set up the frame
-		final JFrame frame = new JFrame();
+		JFrame frame = new JFrame();
 		
 		// paint the content of the frame
 		paint(frame);
-		
 		// add listener to the Window, such that when this window is refocused, refresh the content of the frame
 		// in case there are changes to the content
-		frame.addWindowFocusListener(new WindowFocusListener()
-		{
-
-			@Override
-			public void windowGainedFocus(WindowEvent e) {
-				paint(frame);
-				
-			}
-
-			@Override
-			public void windowLostFocus(WindowEvent e) {
-				// TODO Auto-generated method stub
-				
-			}
-	
-		});
+		frame.addWindowFocusListener(new refresh(frame));
 	}
 	
 	// private class for the save button
@@ -231,13 +253,15 @@ public class ProductInformation {
 		private JTextField name;
 		private JTextField category;
 		private JFrame frame;
+		private JFrame contentFrame;
 		
 		// store the fields that have the new values
-		public saveButton(JTextField newName, JTextField newCategory, JFrame newFrame)
+		public saveButton(JTextField newName, JTextField newCategory, JFrame newFrame, JFrame newContentFrame)
 		{
 			this.name = newName;
 			this.category = newCategory;
 			frame = newFrame;
+			contentFrame = newContentFrame;
 		}
 		
 		@Override
@@ -256,12 +280,13 @@ public class ProductInformation {
 					"Saved",
 					JOptionPane.INFORMATION_MESSAGE);
 				frame.dispose();
+				paint(contentFrame);
 			}
 		}
 	}
 	
 	// function that creates a GUI that allow to modify the information of this class
-	private boolean editProductInformation()
+	private boolean editProductInformation(JFrame contentFrame)
 	{
 		// set up frame
 		JFrame frame = new JFrame();
@@ -281,7 +306,7 @@ public class ProductInformation {
 		
 		// set up save button
 		JButton save = new JButton("Save");
-		save.addActionListener(new saveButton(newName, newCategory, frame));
+		save.addActionListener(new saveButton(newName, newCategory, frame, contentFrame));
 		frame.add(save);
 		
 		// add padding to frame
@@ -301,10 +326,12 @@ public class ProductInformation {
 	private class removeButton implements ActionListener
 	{
 		private int index;
+		private JFrame frame;
 		
-		public removeButton(int i)
+		public removeButton(int i, JFrame newFrame)
 		{
 			index = i;
+			frame = newFrame;
 		}
 		
 		@Override
@@ -314,13 +341,62 @@ public class ProductInformation {
 			if(dialogResult == JOptionPane.YES_OPTION)
 			{
 				removeProduct(index);
+				paint(frame);
 			}
 		}
 		
 	}
 	
+	
+	// private class for edit info button action listener
+	private class editInfoButton implements ActionListener
+	{
+		private JFrame frame;
+		public editInfoButton(JFrame newFrame)
+		{
+			frame = newFrame;
+		}
+
+			public void actionPerformed(ActionEvent e)
+			{
+				editProductInformation(frame);
+			}
+		
+	}
+	
+	// 
+	private class newButton implements ActionListener
+	{
+		private JFrame frame;
+		
+		public newButton(JFrame newFrame)
+		{
+			frame = newFrame;
+		}
+
+		@Override
+		public void actionPerformed(ActionEvent e)
+		{
+			Product newProduct;
+			if(_expirable)
+			{
+				newProduct = new ExpirableProduct();
+				((ExpirableProduct)newProduct).update();
+			}
+			else
+			{
+				newProduct = new Product();
+				newProduct.update();
+			}
+			
+			addProduct(newProduct);
+
+		}
+		
+	}
+	
 	// display the information of this class into the frame received
-	private void paint(JFrame frame)
+	public void paint(JFrame frame)
 	{
 		// set up the frame
 		frame.getContentPane().removeAll();
@@ -340,35 +416,11 @@ public class ProductInformation {
 		
 		// button to edit the basic information
 		JButton editInfo = new JButton("Edit Info");
-		editInfo.addActionListener(new ActionListener()
-				{
-					public void actionPerformed(ActionEvent e)
-					{
-						editProductInformation();
-					}
-				});
+		editInfo.addActionListener(new editInfoButton(frame));
 		
 		// button to add a new product to the list of products
 		JButton newProduct = new JButton("New");
-		newProduct.addActionListener(new ActionListener()
-		{
-			public void actionPerformed(ActionEvent e)
-			{
-				Product newProduct;
-				if(_expirable)
-				{
-					newProduct = new ExpirableProduct();
-					((ExpirableProduct)newProduct).update();
-				}
-				else
-				{
-					newProduct = new Product();
-					newProduct.update();
-				}
-				
-				addProduct(newProduct);
-			}
-		});
+		newProduct.addActionListener(new newButton(frame));
 		
 		// add the buttons to the panel
 		JPanel buttons = new JPanel(new BorderLayout());
@@ -379,15 +431,15 @@ public class ProductInformation {
 		productInfo.add(buttons, BorderLayout.EAST);
 		
 		// section for each product in the list of products
-		JPanel detailInfo = new JPanel(new GridLayout(products.size(),3));
-		for(int i=0; i<products.size(); i++)
+		JPanel detailInfo = new JPanel(new GridLayout(_products.size(),3));
+		for(int i=0; i<_products.size(); i++)
 		{
-			detailInfo.add(products.get(i).display());
+			detailInfo.add(_products.get(i).display());
 			JButton editQuantity = new JButton("Edit");
-			editQuantity.addActionListener(new editButton(i));
+			editQuantity.addActionListener(new editButton(i, frame));
 			detailInfo.add(editQuantity);
 			JButton removeProduct = new JButton("Remove");
-			removeProduct.addActionListener(new removeButton(i));
+			removeProduct.addActionListener(new removeButton(i, frame));
 			detailInfo.add(removeProduct);
 		}
 		
@@ -482,7 +534,6 @@ public class ProductInformation {
 				"Saved",
 				JOptionPane.INFORMATION_MESSAGE);
 				frame.dispose();
-				display();
 		}
 	}
 	
@@ -581,7 +632,7 @@ public class ProductInformation {
 	{
 		for(int i =0; i<location; i++)
 		{
-			if(((ExpirableProduct)products.get(i)).getExpirationDate().equals(product.getExpirationDate()))
+			if(((ExpirableProduct)_products.get(i)).getExpirationDate().equals(product.getExpirationDate()))
 			{
 				return i;
 			}
@@ -592,27 +643,148 @@ public class ProductInformation {
 	// function that reorganizes the ArrayList of products
 	// clusters - such that products with same expiration date are grouped together
 	// if for non-expirable products, they simply grouped all together
-	private Boolean organize()
+	public Boolean organize()
 	{
-		for(int i=products.size()-1; i>0; i--)
+		for(int i=_products.size()-1; i>0; i--)
 		{
-			if(this._expirable)
+			if(this._products.get(i).getQuantity() > 0)
 			{
-				int index;
-				index = hasProductBefore((ExpirableProduct)products.get(i), i);
-				if(index != -1)
+				if(this._expirable)
 				{
-					products.get(index).increaseQuantity(products.get(i).getQuantity());
-					products.remove(i);
+					int index;
+					index = hasProductBefore((ExpirableProduct)_products.get(i), i);
+					if(index != -1)
+					{
+						_products.get(index).increaseQuantity(_products.get(i).getQuantity());
+						_products.remove(i);
+					}
+				}
+				else
+				{
+					_products.get(0).increaseQuantity(_products.get(i).getQuantity());
+					_products.remove(i);
 				}
 			}
 			else
 			{
-				products.get(0).increaseQuantity(products.get(i).getQuantity());
-				products.remove(i);
+				_products.remove(i);
 			}
 		}
 		return true;
+	}
+	
+	// function returns an ArrayList of expired products
+	public ArrayList<Product> getExpired()
+	{
+		ArrayList<Product> list = new ArrayList<Product>();
+		
+		if(this._expirable)
+		{
+			for(int i=0; i< _products.size(); i++)
+			{
+				if(((ExpirableProduct)_products.get(i)).getExpirationDate().isBefore(new LocalDate()) || ((ExpirableProduct)_products.get(i)).getExpirationDate().isEqual(new LocalDate()))
+				{
+					list.add(_products.get(i));
+				}
+			}
+		}
+		
+		return list;
+	}
+	
+	// function returns an ArrayList of not-expired products
+	public ArrayList<Product> getNotExpired()
+	{
+		ArrayList<Product> list = new ArrayList<Product>();
+		
+		if(this._expirable)
+		{
+			for(int i=0; i< _products.size(); i++)
+			{
+				if(((ExpirableProduct)_products.get(i)).getExpirationDate().isAfter(new LocalDate()))
+				{
+					list.add(_products.get(i));
+				}
+			}
+		}
+		else
+		{
+			return _products;
+		}
+		
+		return list;
+	}
+	
+	// return a list of product that will be expired within 7 days
+	public ArrayList<Product> getSoonExpired()
+	{
+		ArrayList<Product> list = new ArrayList<Product>();
+		
+		if(this._expirable)
+		{
+			for(int i=0; i< _products.size(); i++)
+			{
+				LocalDate today = new LocalDate();
+				LocalDate productDate = ((ExpirableProduct)_products.get(i)).getExpirationDate();
+				if(Days.daysBetween(today, productDate).getDays() < 8 && Days.daysBetween(today, productDate).getDays() > 0)
+				{
+					list.add(_products.get(i));
+				}
+			}
+		}
+		
+		return list;
+	}
+	
+	// class that returns the total quantity of the list received
+		private int totalInList(ArrayList<Product> products)
+		{
+			int total =0;
+			for(int i=0; i<products.size(); i++)
+			{
+				total += products.get(i).getQuantity();
+			}
+			return total;
+		}
+	
+	// return the list of products if this product is low in stock -> less than 5
+	public ArrayList<Product> getLowStock()
+	{
+		int total;
+		
+		ArrayList<Product> list = this.getNotExpired();
+		if(totalInList(list) <= 5)
+		{
+			return list;
+		}
+		return new ArrayList<Product>();
+	}
+	
+	// return all the products
+	public ArrayList<Product> getAll()
+	{
+		return _products;
+	}
+	
+	public Product getProductAt(int i)
+	{
+		return this._products.get(i);
+	}
+	
+	// function that add the list of products passed to this product
+	public boolean addProducts(ProductInformation newProducts)
+	{
+		for(int i=0; i<newProducts.getNumberOfProducts(); i++)
+		{
+			this._products.add(newProducts.getProductAt(i));
+		}
+		this.organize();
+		return true;
+	}
+	
+	public int getNumberOfProducts()
+	{
+		return this._products.size();
 	}
 	
 	// test function

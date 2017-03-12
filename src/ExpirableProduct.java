@@ -111,12 +111,12 @@ public class ExpirableProduct extends Product
 		frame.pack();
 		frame.setVisible(true);
 		frame.setLocationRelativeTo(null);
-
 		return true;
 	}
 	
 	// private class for the save button
 	// When the save is successfully processed, the frame received will be closed automatically
+	// CASE F
 	private class saveButton implements ActionListener
 	{
 		private JTextField value;
@@ -149,6 +149,7 @@ public class ExpirableProduct extends Product
 					"New Value Saved",
 					"Saved",
 					JOptionPane.INFORMATION_MESSAGE);
+				frame.setVisible(false);
 				frame.dispose();
 			}
 		}
