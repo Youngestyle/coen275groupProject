@@ -191,7 +191,7 @@ public class ProductInformation {
 		private JFrame frame;
 		public editButton(int newIndex, JFrame newFrame)
 		{
-			index = index;
+			index = newIndex;
 			frame = newFrame;
 		}
 		
